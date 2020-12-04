@@ -1,0 +1,71 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+# Branches that trigger a build on commit
+trigger:
+  branches:
+    include:
+    - master
+name: $(Major).$(Minor).$(Patch)
+
+variables:
+  buildConfiguration: 'Release'
+
+jobs:
+ - job: Web_API
+   displayName: Web_API
+   pool:
+    name: Build-SelfHosted-Windows
+
+   steps:
+    - checkout : self
+      clean : true
+    - task: DotNetCoreCLI@2
+      displayName: dotnet restore Web API
+      inputs:
+        command: restore
+        projects: src/WebAPI/Web.API.csproj
+        arguments: --configuration $(buildConfiguration)
+        includeNuGetOrg: true
+        feedsToUse: config
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet build Web API'
+      inputs:
+        command: build
+        projects: src/WebAPI/Web.API.csproj
+        arguments: --configuration $(buildConfiguration)
+        
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet test Web API'
+      inputs:
+        command: test
+        projects: src/test/Web.API.test.csproj
+        includeNuGetOrg: true
+        publishTestResults: true
+      continueOnError: false
+        
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet publish Web API'
+      inputs:
+        command: publish
+        publishWebProjects: false
+        projects: src/WebAPI/Web.API.csproj
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+      continueOnError: false
+      
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet pack Web API'
+      inputs:
+        command: pack
+        SearchPatternPack: 'src/WebAPI/Web.API.csproj'
+        nobuild: true
+        includesymbols: true
+        versioningScheme: byBuildNumber
+      continueOnError: false
+    - task: PublishBuildArtifacts@1
+      displayName: 'publish artifact: Web API'
+      inputs:
+        PathtoPublish: $(Build.ArtifactStagingDirectory)/Web.API.zip

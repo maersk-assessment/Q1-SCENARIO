@@ -1,0 +1,53 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+# Branches that trigger a build on commit
+trigger:
+  branches:
+    include:
+    - master
+name: $(Major).$(Minor).$(Patch)
+
+jobs:
+ - job: Web_API
+   displayName: Web_API
+   pool:
+    name: Build-SelfHosted-Windows
+
+    steps:
+     - checkout : self
+       clean : true
+
+     - task: Npm@1
+       displayName: 'npm install - Web UI'
+       inputs:
+         workingDir: src/angular
+
+     - task: Npm@1
+       displayName: 'npm build - Web UI'
+       inputs:
+         command: custom
+         workingDir: src/angular
+         customCommand: run build
+       continueOnError: false
+     - task: Npm@1
+       displayName: 'npm test - Web UI'
+       inputs:
+         command: custom
+         workingDir: src/angular
+         customCommand: run autotest
+       continueOnError: false
+     - task: PublishTestResults@2
+       displayName: 'Publish Test Results'
+       inputs:
+         testResultsFiles: '**/*test*.xml'
+       continueOnError: false
+
+     - task: PublishBuildArtifacts@1
+       displayName: 'Publish Artifacts'
+       inputs:
+         PathtoPublish: src/angular/drop
+         ArtifactName: drop
+       continueOnError: false
